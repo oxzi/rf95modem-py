@@ -5,6 +5,14 @@ Python library to send and receive data over LoRa PHY via a serial connection to
 This library was tested against the rf95modem commit [`8f163aa`][rf95modem-commit], slightly after version 0.7.3.
 
 
+## Install
+
+This library is available on PyPI as [`rf95modem`][pypi-rf95modem].
+
+```
+pip install --upgrade rf95modem
+```
+
 ## Library
 
 The primary focus of this library is to send and receive data via LoRa's physical layer, LoRa PHY, with the help of a [rf95modem].
@@ -44,7 +52,7 @@ if __name__ == '__main__':
 ```
 
 
+[pypi-rf95modem]: https://pypi.org/project/rf95modem/
 [pyserial]: https://github.com/pyserial/pyserial/
-[rf95modem]: https://github.com/gh0st42/rf95modem
 [rf95modem-commit]: https://github.com/gh0st42/rf95modem/commit/8f163aa23e6f0c1ca7403c13b0811366e40b7317
-
+[rf95modem]: https://github.com/gh0st42/rf95modem
