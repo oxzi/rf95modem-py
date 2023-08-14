@@ -54,6 +54,17 @@ if __name__ == "__main__":
 ```
 
 
+## Documentation
+
+```
+pip install --upgrade pdoc3
+
+cd src
+pdoc --http 127.0.0.1:8080 rf95modem
+xdg-open http://127.0.0.1:8080/
+```
+
+
 [pypi-rf95modem]: https://pypi.org/project/rf95modem/
 [pyserial]: https://github.com/pyserial/pyserial/
 [rf95modem-commit]: https://github.com/gh0st42/rf95modem/commit/8f163aa23e6f0c1ca7403c13b0811366e40b7317
