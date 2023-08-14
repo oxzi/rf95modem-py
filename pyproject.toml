@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rf95modem"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
   { name="Alvar Penning", email="post@0x21.biz" },
 ]

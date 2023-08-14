@@ -65,6 +65,14 @@ xdg-open http://127.0.0.1:8080/
 ```
 
 
+## Build a Release
+- Bump the `project.version` in the `pyproject.toml` file.
+- `python3 -m build`
+- `twine upload --verbose dist/rf95modem-__VERSION__*` where `__VERSION__` should be your new version.
+- `git tag -s v__VERSION__` where `__VERSION__` should be substituted again.
+- `git push -u origin v__VERSION__`
+
+
 [pypi-rf95modem]: https://pypi.org/project/rf95modem/
 [pyserial]: https://github.com/pyserial/pyserial/
 [rf95modem-commit]: https://github.com/gh0st42/rf95modem/commit/8f163aa23e6f0c1ca7403c13b0811366e40b7317
