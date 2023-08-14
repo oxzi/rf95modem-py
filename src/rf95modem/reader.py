@@ -24,6 +24,37 @@ class Rf95TransmitLengthException(Exception):
         self.exp_len = exp_len
 
 
+class Rf95UnknownCommandException(Exception):
+    """An rf95modem exception for unknown commands."""
+
+    RF95_UNKNOWN_CMD = "+FAIL: Unknown command:"
+    """Prefix for rf95modem's unknown command error."""
+
+    def __init__(self, cmd):
+        super(Exception, self).__init__(f"Unknown rf95modem command {cmd}")
+        self.cmd = cmd
+
+    @classmethod
+    def cmd_check(cls, resp_line):
+        """Check if an rf95modem response line indicaes an unknown command
+        and raises an Rf95UnknownCommandException if it seems so.
+
+        Parameters
+        ----------
+        resp_line : `str`
+            Line received from rf95modem.
+
+        Raises
+        ------
+        Rf95UnknownCommandException
+            Raised when this seems to be an unknown command.
+        """
+        if resp_line.startswith(Rf95UnknownCommandException.RF95_UNKNOWN_CMD):
+            raise Rf95UnknownCommandException(
+                resp_line[len(Rf95UnknownCommandException.RF95_UNKNOWN_CMD) + 1 :]
+            )
+
+
 class ModemMode(enum.Enum):
     """Selection of rf95modem modes of operation."""
 
@@ -83,7 +114,7 @@ class Rf95Reader(serial.threaded.LineReader):
 
     Examples
     --------
-    >>> ser = serial.serial_for_url('/dev/ttyUSB0', baudrate=115200, timeout=1)
+    >>> ser = serial.serial_for_url("/dev/ttyUSB0", baudrate=115200, timeout=1)
     >>> with serial.threaded.ReaderThread(ser, rf95modem.Rf95Reader) as rf95:
     >>>     rf95.rx_handlers.append(lambda rx: print(rx)) # print to stdout
     >>>     rf95.mode(rf95modem.ModemMode.FAST_SHORT_RANGE)
@@ -127,6 +158,13 @@ class Rf95Reader(serial.threaded.LineReader):
         stop_fn : `str` -> `bool`
             Function, str -> bool, to say when stop reading feedback lines.
 
+        Raises
+        ------
+        Rf95UnknownCommandException
+            If the sent command is unknown or not supported.
+        Rf95Exception
+            If no response came within the SERIAL_TIMEOUT_SEC.
+
         Returns
         -------
         _at_cmd : `list` [`str`]
@@ -139,6 +177,8 @@ class Rf95Reader(serial.threaded.LineReader):
             try:
                 line = self._msg_queue.get(timeout=self.SERIAL_TIMEOUT_SEC)
                 lines.append(line)
+
+                Rf95UnknownCommandException.cmd_check(line)
 
                 if stop_fn(line):
                     break
@@ -157,11 +197,11 @@ class Rf95Reader(serial.threaded.LineReader):
 
         Raises
         ------
-        Rf95Exception
-            Raised if sending fails or internal errors.
         Rf95TransmitLengthException
             Raised if the length of sent data does not equals the given data's length.
             If this happens, manual fragmentation might become necessary.
+        Rf95Exception
+            Raised if sending fails or internal errors.
         """
         cmd = "AT+TX=" + binascii.hexlify(payload).decode("utf-8")
         resp = self._at_cmd(cmd, lambda _: True)
@@ -216,19 +256,74 @@ class Rf95Reader(serial.threaded.LineReader):
         if abs(float(match[1]) - freq) > 0.01:
             raise Rf95Exception(f"Frequency changed to {match[0]} instead of {freq}")
 
-    def fetch_status(self):
+    def gps_mode(self, state):
+        """Enable or disable the device's GPS, if supported.
+
+        Parameters
+        ----------
+        state : `bool`
+            True if the GPS should be enabled.
+
+        Raises
+        ------
+        Rf95UnknownCommandException
+            Raised when no GPS support is available.
+        Rf95Exception
+            Raised on internal errors.
+        """
+        cmd = f"AT+GPS={int(state)}"
+        resp = self._at_cmd(cmd, lambda _: True)
+
+        if resp[0] != "+OK":
+            raise Rf95Exception(f"GPS mode {state} failed: {resp[0]}")
+
+    def gps_fetch(self):
+        """Fetch the rf95modem's GPS position.
+
+        Returns
+        -------
+        gps_fetch : `dict` [`str`, `str`]
+            Dictionary mapping all fetched GPS values from key to value.
+
+        Raises
+        ------
+        Rf95UnknownCommandException
+            Raised when no GPS support is available.
+        Rf95Exception
+            Raised on internal errors.
+
+        Examples
+        --------
+        >>> gps = rf95.gps_fetch()
+        >>> print(gps["Latitude"], gps["Longitude"])
+        """
+        cmd = "AT+GPS"
+        resp = self._at_cmd(cmd, lambda l: l.startswith("+OK"))
+
+        return {
+            kv[0].strip(): kv[1].strip()
+            for kv in (line.split(":") for line in resp)
+            if len(kv) == 2
+        }
+
+    def status_fetch(self):
         """Fetch the rf95modem's status.
 
         Returns
         -------
-        fetch_status : `dict` [`str`, `str`]
+        status_fetch : `dict` [`str`, `str`]
             Dictionary mapping all fetched values from key to value.
+
+        Raises
+        ------
+        Rf95Exception
+            Raised on internal errors.
         """
         cmd = "AT+INFO"
         resp = self._at_cmd(cmd, lambda l: l.startswith("+OK"))
 
         return {
-            kv[0]: kv[1].strip()
+            kv[0].strip(): kv[1].strip()
             for kv in (line.split(":") for line in resp)
             if len(kv) == 2 and kv[0] != "+STATUS"
         }
